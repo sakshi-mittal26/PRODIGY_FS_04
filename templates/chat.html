@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">Live Chat</div>
+
+    <ul id="messages" class="messages"></ul>
+
+    <div class="chat-input">
+        <input id="message" placeholder="Type a message..." />
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    const username = prompt("Enter your name");
+
+    socket.emit("join", username);
+
+    function sendMessage() {
+        const input = document.getElementById("message");
+        const msg = input.value.trim();
+
+        if (msg !== "") {
+            socket.send({
+                username: username,
+                message: msg
+            });
+            input.value = "";
+        }
+    }
+
+    socket.on("message", function(msg) {
+        const li = document.createElement("li");
+
+        if (msg.startsWith(username + ":")) {
+            li.className = "me";
+            li.textContent = msg.replace(username + ":", "You:");
+        } else {
+            li.className = "other";
+            li.textContent = msg;
+        }
+
+        document.getElementById("messages").appendChild(li);
+        autoScroll();
+    });
+
+    function autoScroll() {
+        const messages = document.getElementById("messages");
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    document.getElementById("message").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") sendMessage();
+    });
+</script>
+
+</body>
+</html>

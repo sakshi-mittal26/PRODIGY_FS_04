@@ -1,47 +1,21 @@
-from flask import Flask, render_template, redirect, url_for
-import pymysql
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
+from flask import Flask, render_template
+from flask_socketio import SocketIO, send
 
 app = Flask(__name__)
-
-conn = pymysql.connect(
-    host=os.getenv("DB_HOST"),
-    user=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASSWORD"),
-    database=os.getenv("DB_NAME"),
-    cursorclass=pymysql.cursors.DictCursor
-)
+app.config["SECRET_KEY"] = "secret"
+socketio = SocketIO(app)
 
 @app.route("/")
-def index():
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM products")
-    products = cursor.fetchall()
-    cursor.close()
-    return render_template("index.html", products=products)
+def chat():
+    return render_template("chat.html")
 
-@app.route("/add-to-cart/<int:product_id>")
-def add_to_cart(product_id):
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO cart (product_id) VALUES (%s)", (product_id,))
-    conn.commit()
-    cursor.close()
-    return redirect(url_for("index"))
+@socketio.on("message")
+def handle_message(msg):
+    send(f"{msg['username']}: {msg['message']}", broadcast=True)
 
-@app.route("/cart")
-def cart():
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT products.name, products.price
-        FROM cart
-        JOIN products ON cart.product_id = products.id
-    """)
-    items = cursor.fetchall()
-    cursor.close()
-    return render_template("cart.html", items=items)
+@socketio.on("join")
+def handle_join(username):
+    send(f"{username} joined the chat", broadcast=True)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    socketio.run(app, debug=True)
